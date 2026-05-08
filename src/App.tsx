@@ -596,35 +596,77 @@ export default function App() {
                           const isChest = choice.label.includes("Abrir Baú");
                           
                           let isDisabled = false;
+                          let disableReason = "";
+                          
                           if (isExtraMission) {
-                            if (gameState.currentNode === 14 && (gameState.time <= 3000 || gameState.missions.ajudouPipo)) isDisabled = true;
-                            if (gameState.currentNode === 26 && (gameState.time <= 1800 || gameState.missions.ajudouBina)) isDisabled = true;
+                            if (gameState.currentNode === 14 && (gameState.time <= 3000 || gameState.missions.ajudouPipo)) { isDisabled = true; disableReason = gameState.missions.ajudouPipo ? "Missão concluída" : "Sem tempo suficiente"; }
+                            if (gameState.currentNode === 26 && (gameState.time <= 1800 || gameState.missions.ajudouBina)) { isDisabled = true; disableReason = gameState.missions.ajudouBina ? "Missão concluída" : "Sem tempo suficiente"; }
                           }
+                          
+                          let isChestOpened = false;
                           if (isChest) {
-                            if (choice.nextNode === 18 && !gameState.items.chaveAzul) isDisabled = true;
-                            if (choice.nextNode === 36 && (!gameState.items.chaveDourada || gameState.time < 1800)) isDisabled = true;
-                            if (choice.nextNode === 42 && (gameState.time < 1800 || gameState.events.modoUltimaChamada)) isDisabled = true;
+                            if (choice.nextNode === 18 && gameState.chests.bauAzul) isChestOpened = true;
+                            if (choice.nextNode === 36 && gameState.chests.bauDourado) isChestOpened = true;
+                            if (choice.nextNode === 42 && gameState.chests.bauMares) isChestOpened = true;
+                            
+                            if (!isChestOpened) {
+                              if (choice.nextNode === 18 && !gameState.items.chaveAzul) { isDisabled = true; disableReason = "Requer Chave Azul"; }
+                              else if (choice.nextNode === 36 && !gameState.items.chaveDourada) { isDisabled = true; disableReason = "Requer Chave Dourada"; }
+                              else if (choice.nextNode === 36 && gameState.time < 1800) { isDisabled = true; disableReason = "Sem tempo suficiente"; }
+                              else if (choice.nextNode === 42 && gameState.time < 1800) { isDisabled = true; disableReason = "Sem tempo suficiente"; }
+                              else if (choice.nextNode === 42 && gameState.events.modoUltimaChamada) { isDisabled = true; disableReason = "Modo ativado"; }
+                            }
                           }
 
-                          if (isDisabled) return null;
+                          if (isChestOpened) {
+                             return (
+                               <div key={i} className="group text-left p-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50 flex flex-col justify-between opacity-80">
+                                 <div>
+                                   <span className="text-[10px] font-black uppercase tracking-widest block mb-1 text-emerald-600">
+                                     ✧ Tesouro Aberto
+                                   </span>
+                                   <span className="font-bold text-emerald-900 line-through truncate block">
+                                     {choice.label.replace(" (Requer Chave)", "")}
+                                   </span>
+                                 </div>
+                                 <div className="mt-2 flex items-center gap-1 text-emerald-600 text-xs font-bold">
+                                   <CheckCircle2 size={14} /> Aberto com sucesso
+                                 </div>
+                               </div>
+                             );
+                          }
 
                           return (
                             <button 
                               key={i}
-                              onClick={() => handleChoice(choice.nextNode)}
+                              onClick={() => { if (!isDisabled) handleChoice(choice.nextNode); }}
+                              disabled={isDisabled}
                               className={`
-                                group text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between
-                                ${isExtraMission ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300' : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-sky-300 hover:shadow-lg'}
-                                ${isChest ? 'border-sky-200 bg-sky-50' : ''}
+                                group text-left p-4 rounded-2xl border-2 transition-all flex flex-col justify-between
+                                ${isDisabled 
+                                  ? 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed' 
+                                  : isExtraMission 
+                                    ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 cursor-pointer' 
+                                    : isChest 
+                                      ? 'border-sky-200 bg-sky-50 hover:bg-sky-100 hover:border-sky-300 cursor-pointer' 
+                                      : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-sky-300 hover:shadow-lg cursor-pointer'}
                               `}
                             >
                               <div>
-                                <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isExtraMission ? 'text-amber-500' : 'text-slate-400'}`}>
+                                <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isDisabled ? 'text-slate-400' : isExtraMission ? 'text-amber-500' : isChest ? 'text-sky-500' : 'text-slate-400'}`}>
                                   {isExtraMission ? '✦ Missão Extra' : isChest ? '✧ Tesouro' : `Ação`}
                                 </span>
-                                <span className="font-bold text-slate-800">{choice.label}</span>
+                                <span className={`font-bold ${isDisabled ? 'text-slate-500' : 'text-slate-800'} line-clamp-2 leading-tight`}>{choice.label}</span>
                               </div>
-                              <ChevronRight className={`transition-transform grow-0 shrink-0 ${isExtraMission ? 'text-amber-400 group-hover:translate-x-1' : 'text-slate-300 group-hover:translate-x-1 group-hover:text-sky-500'}`} />
+                              <div className="mt-2 flex self-end w-full">
+                                {isDisabled ? (
+                                  <span className="text-[10px] font-bold text-rose-500 flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-md">
+                                    <XCircle size={12} /> {disableReason}
+                                  </span>
+                                ) : (
+                                  <ChevronRight className={`transition-transform grow-0 shrink-0 self-end ml-auto ${isExtraMission ? 'text-amber-400 group-hover:translate-x-1' : isChest ? 'text-sky-400 group-hover:translate-x-1' : 'text-slate-300 group-hover:translate-x-1 group-hover:text-sky-500'}`} />
+                                )}
+                              </div>
                             </button>
                           );
                         })}
